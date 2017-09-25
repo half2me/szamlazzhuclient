@@ -257,7 +257,7 @@ class Invoice extends MutatorAccessible
      */
     protected function getOrderDetailsValidationRules(){
         return [
-            //'beallitasok.eszamla' => 'required|boolean',
+            'beallitasok.eszamla' => ['required' => 'boolean'],
 
             'fejlec.keltDatum' => ['required','date:Y-m-d'],
             'fejlec.teljesitesDatum' => ['required','date:Y-m-d'],

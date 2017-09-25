@@ -2,8 +2,9 @@
 
 namespace Clapp\SzamlazzhuClient;
 
-use LSS\Array2XML;
 use Clapp\SzamlazzhuClient\Invoice;
+use GuzzleHttp\Psr7\Response;
+use LSS\Array2XML;
 use GuzzleHttp\Client as HttpClient;
 use Clapp\SzamlazzhuClient\Traits\MutatorAccessibleAliasesTrait;
 use InvalidArgumentException;
@@ -27,25 +28,27 @@ class SzamlazzhuClient extends MutatorAccessible
         'username' => 'felhasznalo',
         'password' => 'jelszo',
     ];
-    /**
-     * A megadott számla adatokból PDF számlát készít a szamlazz.hu API-ján át
-     * @param  Invoice|array $invoice számla
-     * @return [type]          [description]
-     */
-    public function generateInvoicePdf($invoice){
-        $invoice = new Invoice($invoice);
 
+    /**
+     * szamlazz.hu API hívása
+     * @param Invoice|StornoInvoice|PdfQuery $data a számlát, sztornó számlát vagy pdf lekérést reprezentáló objektum
+     * @return Response szamlazz.hu válasza
+     */
+    public function request($data)
+    {
         try {
-            $invoice->validate();
-        }catch(ValidationException $e){
-            throw new InvalidArgumentException('invalid invoice');
+            $type = get_class($data);
+            $data = new $type($data);
+            $data->validate();
+        } catch (ValidationException $e) {
+            throw new InvalidArgumentException('invalid data');
         }
 
-        $invoice = $this->addRequiredInvoiceFields($invoice);
+        $data = $this->addRequiredFields($data);
 
         $httpClientOptions = [
             'base_uri' => $this->apiBase,
-            'timeout'  => 20.0,
+            'timeout' => 20.0,
             //'cookies' => true,
         ];
         if ($this->handler !== null) {
@@ -54,63 +57,94 @@ class SzamlazzhuClient extends MutatorAccessible
 
         $client = new HttpClient($httpClientOptions);
 
-        $requestData = $this->transformRequestData($invoice);
+        $requestData = $this->transformRequestData($data);
         $response = $client->request('POST', '/szamla/', $requestData);
         return $this->transformResponse($response);
     }
 
     /**
-     * PDF-fé alakítja a választ, vagy Exceptiont dob, ha ez nem lehetséges.
-     * @param $response
-     * @return Stream pdf tartalma
+     * visszaadja a szamlazz.hu API-tól érkező választ, vagy Exceptiont dob, ha ez nem lehetséges.
+     * @param $response válasz
+     * @return Response válasz
      */
-    protected function transformResponse($response){
-        $apiErrorCode = array_get($response->getHeader('szlahu_error_code'),0);
-        if (!empty($apiErrorCode) && $apiErrorCode > 0){
+    protected function transformResponse($response)
+    {
+        $apiErrorCode = array_get($response->getHeader('szlahu_error_code'), 0);
+        if (!empty($apiErrorCode) && $apiErrorCode > 0) {
 
-            $apiErrorMessage = array_get($response->getHeader('szlahu_error'),0);
+            $apiErrorMessage = array_get($response->getHeader('szlahu_error'), 0);
 
             throw new SzamlazzhuApiException(
                 $apiErrorMessage,
                 $apiErrorCode
             );
         }
-        return $response->getBody();
+        return $response;
     }
+
     /**
-     * Hozzáadja a PDF elkészítéséhez szükséges mezőket az Invoice-hoz
-     * @param Invoice $invoice
-     * @return Invoice $invoice
+     * Hozzáadja a pdf elkészítéséhez, számla sztornózásához vagy pdf lekéréséhez szükséges mezőket
+     * @param Invoice|StornoInvoice|PdfQuery $data a számlát, sztornó számlát vagy pdf lekérést reprezentáló objektum
+     * @return Invoice|StornoInvoice|PdfQuery $data a számlát, sztornó számlát vagy pdf lekérést reprezentáló objektum
      */
-    protected function addRequiredInvoiceFields(Invoice $invoice){
+    protected function addRequiredFields($data)
+    {
         if ($this->username === null || $this->password === null) {
             throw new InvalidArgumentException('missing username and password');
         }
-        $beallitasok = $invoice->beallitasok;
-        if (empty($beallitasok)) $invoice->beallitasok = [];
 
-        $beallitasok['felhasznalo'] = $this->username;
-        $beallitasok['jelszo'] = $this->password;
-        $beallitasok['eszamla'] = false; //„true” ha e-számlát kell készíteni
-        $beallitasok['szamlaLetoltes'] = true; //„true” ha a válaszban meg szeretnénk kapni az elkészült PDF számlát
-        $beallitasok['valaszVerzio'] = 1; //1: egyszerű szöveges válaszüzenetet vagy pdf-et ad vissza. 2: xml válasz, ha kérte a pdf-et az base64 kódolással benne van az xml-ben.
+        if (is_a($data, PdfQuery::class)) {
+            $data->felhasznalo = $this->username;
+            $data->jelszo = $this->password;
+            $data->valaszVerzio = 1;
+        } else {
+            $beallitasok = $data->beallitasok;
+            if (empty($beallitasok)) $data->beallitasok = [];
 
-        $invoice->beallitasok = $beallitasok;
-        return $invoice;
+            $beallitasok['felhasznalo'] = $this->username;
+            $beallitasok['jelszo'] = $this->password;
+            $beallitasok['eszamla'] = false; //„true” ha e-számlát kell készíteni
+            $beallitasok['szamlaLetoltes'] = $this->downloadInvoice; //„true” ha a válaszban meg szeretnénk kapni az elkészült PDF számlát
+            if (is_a($data, Invoice::class)) {
+                $beallitasok['valaszVerzio'] = 1; //1: egyszerű szöveges válaszüzenetet vagy pdf-et ad vissza. 2: xml válasz, ha kérte a pdf-et az base64 kódolással benne van az xml-ben.
+            }
+
+            $data->beallitasok = $beallitasok;
+        }
+
+        return $data;
     }
+
     /**
-     * Átalakítja az Invoice-t olyan formátumra, amit az API el tud fogadni
-     * @param Invoice $invoice
+     * Átalakítja az adatokat olyan formátumra, amit az API el tud fogadni
+     * @param Invoice|StornoInvoice|PdfQuery $data
      * @return array requestData
      */
-    protected function transformRequestData(Invoice $invoice){
+    protected function transformRequestData($data)
+    {
+        switch (get_class($data)) {
+            case Invoice::class:
+                $type = 'xmlszamla';
+                $name = 'action-xmlagentxmlfile';
+                break;
+            case StornoInvoice::class:
+                $type = 'xmlszamlast';
+                $name = 'action-szamla_agent_st';
+                break;
+            case PdfQuery::class:
+                $type = 'xmlszamlapdf';
+                $name = 'action-szamla_agent_pdf';
+                break;
+            default:
+                throw new InvalidArgumentException('invalid data');
+        }
 
-        $body = $this->transformRequestBody($invoice);
+        $body = $this->transformRequestBody($data, $type);
 
         return [
             'multipart' => [
                 [
-                    'name'     => 'action-xmlagentxmlfile',
+                    'name' => $name,
                     'contents' => $body,
                     /**
                      * dummy fájlnevet is meg kell adni, különben az API nem foglalkozik a fájllal
@@ -120,27 +154,30 @@ class SzamlazzhuClient extends MutatorAccessible
             ]
         ];
     }
+
     /**
-     * Átalakítja az Invoice-t xml-lé, hogy az api is értelmezni tudja
-     * @param Invoice $invoice
+     * Átalakítja a kapott adatot xml-lé, hogy az api is értelmezni tudja
+     * @param Invoice|StornoInvoice|PdfQuery $data
      * @return string xml
      */
-    protected function transformRequestBody(Invoice $invoice){
+    protected function transformRequestBody($data, $type)
+    {
         $invoiceDocument = Array2XML::createXML(
-            'xmlszamla',
-            $invoice->toArray()
+            $type,
+            $data->toArray()
         );
-        $node = $invoiceDocument->getElementsByTagName('xmlszamla')->item(0);
-        $node->setAttribute('xmlns','http://www.szamlazz.hu/xmlszamla');
-        $node->setAttribute('xmlns:xsi','http://www.w3.org/2001/XMLSchema-instance');
-        $node->setAttribute('xsi:schemaLocation','http://www.szamlazz.hu/xmlszamla xmlszamla.xsd');
+        $node = $invoiceDocument->getElementsByTagName($type)->item(0);
+        $node->setAttribute('xmlns', "http://www.szamlazz.hu/{$type}");
+        $node->setAttribute('xmlns:xsi', "http://www.w3.org/2001/XMLSchema-instance");
+        $node->setAttribute('xsi:schemaLocation', "http://www.szamlazz.hu/{$type} {$type}.xsd");
         return $invoiceDocument->saveXML();
     }
 
     /**
      * teszteléshez GuzzleHttp\HandlerStack beállítása
      */
-    public function setHandler($handler){
+    public function setHandler($handler)
+    {
         $this->handler = $handler;
     }
 }
