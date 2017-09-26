@@ -36,12 +36,13 @@ class SzamlazzhuClient extends MutatorAccessible
      */
     public function request($data)
     {
+        $type = get_class($data);
+        $data = new $type($data);
         try {
-            $type = get_class($data);
-            $data = new $type($data);
             $data->validate();
         } catch (ValidationException $e) {
-            throw new InvalidArgumentException('invalid data');
+            $fieldList = implode(', ', $e->validator->getMessageBag()->keys());
+            throw new InvalidArgumentException("invalid data ($fieldList)");
         }
 
         $data = $this->addRequiredFields($data);
@@ -83,7 +84,7 @@ class SzamlazzhuClient extends MutatorAccessible
     }
 
     /**
-     * Hozzáadja a pdf elkészítéséhez, számla sztornózásához vagy pdf lekéréséhez szükséges mezőket
+     * Hozzáadja a számla elkészítéséhez, számla sztornózásához vagy pdf lekéréséhez szükséges mezőket
      * @param Invoice|StornoInvoice|PdfQuery $data a számlát, sztornó számlát vagy pdf lekérést reprezentáló objektum
      * @return Invoice|StornoInvoice|PdfQuery $data a számlát, sztornó számlát vagy pdf lekérést reprezentáló objektum
      */
