@@ -34,7 +34,11 @@ class Invoice extends MutatorAccessible
         'hu',
         'en',
         'de',
+        'fr',
         'it',
+        'ro',
+        'sk',
+        'hr',
     ];
 
     /**
