@@ -23,14 +23,15 @@ class Invoice extends MutatorAccessible
 {
     use MutatorAccessibleAliasesTrait, FillableAttributesTrait;
 
-    public function __construct($attributes = []){
+    public function __construct($attributes = [])
+    {
         $this->fill($attributes);
     }
 
     /**
      * "fejlec.szamlaNelve" lehetséges értékei
      */
-    public $allowedLanguages = [
+    protected static $allowedLanguages = [
         'hu',
         'en',
         'de',
@@ -41,11 +42,17 @@ class Invoice extends MutatorAccessible
         'hr',
     ];
 
+    public static function getAllowedLanguages()
+    {
+        return self::$allowedLanguages;
+    }
+
     /**
      * aliasok a számla mezőire
      */
     protected $attributeAliases = [
         'customerName' => 'vevo.nev',
+        'customerBillingCountry' => 'vevo.orszag',
         'customerBillingPostcode' => 'vevo.irsz',
         'customerBillingCity' => 'vevo.telepules',
         'customerBillingAddress' => 'vevo.cim',
@@ -68,102 +75,115 @@ class Invoice extends MutatorAccessible
         'merchantSignerName' => 'elado.alairoNeve',
 
         'paymentMethod' => 'fejlec.fizmod',
-        'currency' =>'fejlec.penznem',
-        'language' =>'fejlec.szamlaNyelve',
-        'comment' =>'fejlec.megjegyzes',
-        'exchangeRateBank' =>'fejlec.arfolyamBank',
-        'exchangeRate' =>'fejlec.arfolyam',
-        'orderNumber' =>'fejlec.rendelesSzam',
-        'paid' =>'fejlec.fizetve',
+        'currency' => 'fejlec.penznem',
+        'language' => 'fejlec.szamlaNyelve',
+        'comment' => 'fejlec.megjegyzes',
+        'exchangeRateBank' => 'fejlec.arfolyamBank',
+        'exchangeRate' => 'fejlec.arfolyam',
+        'orderNumber' => 'fejlec.rendelesSzam',
+        'paid' => 'fejlec.fizetve',
     ];
 
-    public function setLanguageAttribute($lang){
-        if (!in_array($lang, $this->allowedLanguages)){
+    public function setLanguageAttribute($lang)
+    {
+        if (!in_array($lang, self::$allowedLanguages)) {
             throw new InvalidArgumentException("invalid language");
         }
         array_set($this->attributes, 'fejlec.szamlaNyelve', $lang);
     }
 
-    public function setItemsAttribute($items){
-        if ($items instanceof InvoiceableItemCollectionContract){
+    public function setItemsAttribute($items)
+    {
+        if ($items instanceof InvoiceableItemCollectionContract) {
             $items = $items->getInvoiceItemCollectionData();
         }
-        if (is_array($items)){
+        if (is_array($items)) {
             if (!isset($this->attributes['tetelek']['tetel'])) $this->attributes['tetelek']['tetel'] = [];
             $this->attributes['tetelek']['tetel'] = [];
-            foreach($items as $item){
+            foreach ($items as $item) {
                 $this->addItem($item);
             }
-        }else {
+        } else {
             throw new InvalidArgumentException("invalid items");
         }
     }
 
-    public function getItemsAttribute(){
+    public function getItemsAttribute()
+    {
         return array_get($this->attributes, 'tetelek.tetel');
         /*return array_map(function($item){
             return new InvoiceItem($item);
         },array_get($this->attributes, 'tetelek'));*/
     }
 
-    public function addItem($item){
-        if ($item instanceof InvoiceableItemContract){
+    public function addItem($item)
+    {
+        if ($item instanceof InvoiceableItemContract) {
             $item = $item->getInvoiceItemData();
         }
         if (!isset($this->attributes['tetelek']['tetel'])) $this->attributes['tetelek']['tetel'] = [];
         $this->attributes['tetelek']['tetel'][] = (new InvoiceItem($item))->toArray();
     }
 
-    public function setCustomerAttribute($customer){
-        if ($customer instanceof InvoiceableCustomerContract){
+    public function setCustomerAttribute($customer)
+    {
+        if ($customer instanceof InvoiceableCustomerContract) {
             $customer = $customer->getInvoiceCustomerData();
         }
         $this->fill($customer);
     }
 
-    public function setMerchantAttribute($customer){
-        if ($customer instanceof InvoiceableMerchantContract){
+    public function setMerchantAttribute($customer)
+    {
+        if ($customer instanceof InvoiceableMerchantContract) {
             $customer = $customer->getInvoiceMerchantData();
         }
         $this->fill($customer);
     }
+
     /**
      * dátum mezők
      */
-    public function setSignatureDateAttribute($date){
+    public function setSignatureDateAttribute($date)
+    {
         $date = new Carbon($date);
         array_set($this->attributes, 'fejlec.keltDatum', $date->format('Y-m-d'));
     }
 
-    public function getSignatureDateAttribute(){
+    public function getSignatureDateAttribute()
+    {
         $ret = Carbon::now();
-        if (array_has($this->attributes, 'fejlec.keltDatum')){
+        if (array_has($this->attributes, 'fejlec.keltDatum')) {
             $ret = new Carbon(array_get($this->attributes, 'fejlec.keltDatum'));
         }
         return $ret->hour(0)->minute(0)->second(0);
     }
 
-    public function setSettlementDateAttribute($date){
+    public function setSettlementDateAttribute($date)
+    {
         $date = new Carbon($date);
         array_set($this->attributes, 'fejlec.teljesitesDatum', $date->format('Y-m-d'));
     }
 
-    public function getSettlementDateAttribute(){
+    public function getSettlementDateAttribute()
+    {
         $ret = Carbon::now();
-        if (array_has($this->attributes, 'fejlec.teljesitesDatum')){
+        if (array_has($this->attributes, 'fejlec.teljesitesDatum')) {
             $ret = new Carbon(array_get($this->attributes, 'fejlec.teljesitesDatum'));
         }
         return $ret->hour(0)->minute(0)->second(0);
     }
 
-    public function setDueDateAttribute($date){
+    public function setDueDateAttribute($date)
+    {
         $date = new Carbon($date);
         array_set($this->attributes, 'fejlec.fizetesiHataridoDatum', $date->format('Y-m-d'));
     }
 
-    public function getDueDateAttribute(){
+    public function getDueDateAttribute()
+    {
         $ret = Carbon::now();
-        if (array_has($this->attributes, 'fejlec.fizetesiHataridoDatum')){
+        if (array_has($this->attributes, 'fejlec.fizetesiHataridoDatum')) {
             $ret = new Carbon(array_get($this->attributes, 'fejlec.fizetesiHataridoDatum'));
         }
         return $ret->hour(0)->minute(0)->second(0);
@@ -172,7 +192,8 @@ class Invoice extends MutatorAccessible
     /**
      * Egy Customer validálásához használható szabályok
      */
-    protected function getCustomerValidationRules(){
+    protected function getCustomerValidationRules()
+    {
         return [
             "vevo.nev" => "required|string",
             "vevo.irsz" => "required",
@@ -190,21 +211,25 @@ class Invoice extends MutatorAccessible
             'vevo.megjegyzes' => 'string',
         ];
     }
+
     /**
      * Egy Customer validálása
      * @throws Exception
      */
-    public function validateCustomer(){
+    public function validateCustomer()
+    {
         $validator = Validator::make($this->toArray(), $this->getCustomerValidationRules());
-        if ($validator->fails()){
+        if ($validator->fails()) {
             throw new ValidationException($validator);
         }
         return true;
     }
+
     /**
      * Egy Merchant validálásához használható szabályok
      */
-    protected function getMerchantValidationRules(){
+    protected function getMerchantValidationRules()
+    {
         return [
             'elado' => 'required|array',
             'elado.bank' => 'string',
@@ -215,21 +240,25 @@ class Invoice extends MutatorAccessible
             'elado.alairoNeve' => 'string',
         ];
     }
+
     /**
      * Egy Merchant validálása
      * @throws Exception
      */
-    public function validateMerchant(){
+    public function validateMerchant()
+    {
         $validator = Validator::make($this->toArray(), $this->getMerchantValidationRules());
-        if ($validator->fails()){
+        if ($validator->fails()) {
             throw new ValidationException($validator);
         }
         return true;
     }
+
     /**
      * A számla termékeinek validálásához használható szabályok
      */
-    protected function getItemsValidationRules(){
+    protected function getItemsValidationRules()
+    {
         return [
             'tetelek' => 'required|array',
             'tetelek.0.*.tetel.megnevezes' => 'required',
@@ -245,30 +274,34 @@ class Invoice extends MutatorAccessible
             'tetelek.0.*.tetel.megjegyzes' => 'string'
         ];
     }
+
     /**
      * A számla termékeinek validálása
      * @throws Exception
      */
-    public function validateItems(){
+    public function validateItems()
+    {
         $validator = Validator::make($this->toArray(), $this->getItemsValidationRules());
-        if ($validator->fails()){
+        if ($validator->fails()) {
             throw new ValidationException($validator);
         }
         return true;
     }
+
     /**
      * A számla kiegészítő adatainak validálásához használható szabályok
      */
-    protected function getOrderDetailsValidationRules(){
+    protected function getOrderDetailsValidationRules()
+    {
         return [
             'beallitasok.eszamla' => ['required' => 'boolean'],
 
-            'fejlec.keltDatum' => ['required','date:Y-m-d'],
-            'fejlec.teljesitesDatum' => ['required','date:Y-m-d'],
-            'fejlec.fizetesiHataridoDatum' => ['required','date:Y-m-d'],
+            'fejlec.keltDatum' => ['required', 'date:Y-m-d'],
+            'fejlec.teljesitesDatum' => ['required', 'date:Y-m-d'],
+            'fejlec.fizetesiHataridoDatum' => ['required', 'date:Y-m-d'],
             'fejlec.fizmod' => 'required|string',
             'fejlec.penznem' => 'required|string',
-            'fejlec.szamlaNyelve' => 'required|string|in:'.implode(',',$this->allowedLanguages),
+            'fejlec.szamlaNyelve' => 'required|string|in:' . implode(',', self::$allowedLanguages),
 
             'fejlec.megjegyzes' => 'string',
             'fejlec.arfolyamBank' => 'string',
@@ -283,22 +316,26 @@ class Invoice extends MutatorAccessible
             'fejlec.fizetve' => 'boolean',
         ];
     }
+
     /**
      * A számla kiegészítő adatainak validálása
      * @throws Exception
      */
-    public function validateOrderDetails(){
+    public function validateOrderDetails()
+    {
         $validator = Validator::make($this->toArray(), $this->getOrderDetailsValidationRules());
-        if ($validator->fails()){
+        if ($validator->fails()) {
             throw new ValidationException($validator);
         }
         return true;
     }
+
     /**
      * A teljes számla validálása
      * @throws Exception
      */
-    public function validate(){
+    public function validate()
+    {
         return $this->validateItems() &&
             $this->validateMerchant() &&
             $this->validateCustomer() &&
@@ -310,7 +347,8 @@ class Invoice extends MutatorAccessible
      *
      * ez "sorrendbe" rakja őket
      */
-    protected function sortAttributes(){
+    protected function sortAttributes()
+    {
         $invoiceKeysOrder = ['beallitasok', 'fejlec', 'elado', 'vevo', 'fuvarlevel', 'tetelek'];
         $customerKeysOrder = ['nev', 'orszag', 'irsz', 'telepules', 'cim', 'email', 'sendEmail', 'adoszam', 'adoszamEU', 'postazasiNev',
             'postazasiOrszag', 'postazasiIrsz', 'postazasiTelepules', 'postazasiCim', 'vevoFokonyv', 'azonosito', 'alairoNeve', 'telefonszam', 'megjegyzes'];
@@ -327,7 +365,7 @@ class Invoice extends MutatorAccessible
             'vevo' => $customerKeysOrder,
         ];
 
-        foreach ($aliases as $name => $keysOrder){
+        foreach ($aliases as $name => $keysOrder) {
             if (array_has($this->attributes, $name)) {
                 array_set(
                     $this->attributes,
@@ -341,7 +379,8 @@ class Invoice extends MutatorAccessible
         }
     }
 
-    public function toArray(){
+    public function toArray()
+    {
         $this->sortAttributes();
         return $this->attributes;
     }
