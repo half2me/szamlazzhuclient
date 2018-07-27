@@ -66,7 +66,7 @@ class StornoInvoice extends MutatorAccessible
     public function validateCustomer(){
         $validator = Validator::make($this->toArray(), $this->getCustomerValidationRules());
         if ($validator->fails()){
-            throw new ValidationException($validatszámlaor);
+            throw new ValidationException($validator);
         }
         return true;
     }
