@@ -42,6 +42,7 @@ class Invoice extends MutatorAccessible
      */
     protected $attributeAliases = [
         'customerName' => 'vevo.nev',
+        'customerBillingCountry' => 'vevo.orszag',
         'customerBillingPostcode' => 'vevo.irsz',
         'customerBillingCity' => 'vevo.telepules',
         'customerBillingAddress' => 'vevo.cim',
@@ -49,6 +50,7 @@ class Invoice extends MutatorAccessible
         'customerShouldReceiveNotification' => 'vevo.sendEmail',
         'customerTaxNumber' => 'vevo.adoszam',
         'customerShippingName' => 'vevo.postazasiNev',
+        'customerShippingCountry' => 'vevo.postazasiOrszag',
         'customerShippingPostcode' => 'vevo.postazasiIrsz',
         'customerShippingCity' => 'vevo.postazasiTelepules',
         'customerShippingAddress' => 'vevo.postazasiCim',
@@ -171,6 +173,7 @@ class Invoice extends MutatorAccessible
     protected function getCustomerValidationRules(){
         return [
             "vevo.nev" => "required|string",
+            'vevo.orszag' => 'string',
             "vevo.irsz" => "required",
             'vevo.telepules' => 'required|string',
             'vevo.cim' => 'required|string',
@@ -178,6 +181,7 @@ class Invoice extends MutatorAccessible
             'vevo.sendEmail' => 'boolean',
             'vevo.adoszam' => 'string',
             'vevo.postazasiNev' => 'string',
+            'vevo.postazasiOrszag' => 'string',
             'vevo.postazasiIrsz' => 'string',
             'vevo.postazasiTelepules' => 'string',
             'vevo.postazasiCim' => 'string',
