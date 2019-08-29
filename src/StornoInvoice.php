@@ -49,6 +49,36 @@ class StornoInvoice extends MutatorAccessible
         }
         $this->fill($customer);
     }
+    
+    /**
+     * dátum mezők
+     */
+    public function setSignatureDateAttribute($date)
+    {
+        $date = new Carbon($date);
+        array_set($this->attributes, 'fejlec.keltDatum', $date->format('Y-m-d'));
+    }
+    public function getSignatureDateAttribute()
+    {
+        $ret = Carbon::now();
+        if (array_has($this->attributes, 'fejlec.keltDatum')) {
+            $ret = new Carbon(array_get($this->attributes, 'fejlec.keltDatum'));
+        }
+        return $ret->hour(0)->minute(0)->second(0);
+    }
+    public function setSettlementDateAttribute($date)
+    {
+        $date = new Carbon($date);
+        array_set($this->attributes, 'fejlec.teljesitesDatum', $date->format('Y-m-d'));
+    }
+    public function getSettlementDateAttribute()
+    {
+        $ret = Carbon::now();
+        if (array_has($this->attributes, 'fejlec.teljesitesDatum')) {
+            $ret = new Carbon(array_get($this->attributes, 'fejlec.teljesitesDatum'));
+        }
+        return $ret->hour(0)->minute(0)->second(0);
+    }
 
     /**
      * Egy Customer validálásához használható szabályok
@@ -101,7 +131,8 @@ class StornoInvoice extends MutatorAccessible
     {
         return [
             'beallitasok.eszamla' => ['required' => 'boolean'],
-
+            'fejlec.keltDatum' => ['required', 'date:Y-m-d'],
+            'fejlec.teljesitesDatum' => ['required', 'date:Y-m-d'],
             'fejlec.szamlaszam' => 'string',
             'fejlec.rendelesSzam' => 'string',
         ];
@@ -141,7 +172,7 @@ class StornoInvoice extends MutatorAccessible
         $invoiceKeysOrder = ['beallitasok', 'fejlec', 'elado', 'vevo'];
         $merchantKeysOrder = ['emailReplyto', 'emailTargy', 'emailSzoveg'];
         $settingsKeysOrder = ['felhasznalo', 'jelszo', 'eszamla', 'szamlaLetoltes'];
-        $headerKeysOrder = ['szamlaszam', 'rendelesSzam'];
+        $headerKeysOrder = ['keltDatum', 'teljesitesDatum', 'szamlaszam', 'rendelesSzam'];
 
         if (isset($this->attributes)) $this->attributes = \sortArrayKeysToOrder($this->attributes, $invoiceKeysOrder);
 
