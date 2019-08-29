@@ -172,7 +172,7 @@ class StornoInvoice extends MutatorAccessible
         $invoiceKeysOrder = ['beallitasok', 'fejlec', 'elado', 'vevo'];
         $merchantKeysOrder = ['emailReplyto', 'emailTargy', 'emailSzoveg'];
         $settingsKeysOrder = ['felhasznalo', 'jelszo', 'eszamla', 'szamlaLetoltes'];
-        $headerKeysOrder = ['keltDatum', 'teljesitesDatum', 'szamlaszam', 'rendelesSzam'];
+        $headerKeysOrder = ['szamlaszam', 'rendelesSzam', 'keltDatum', 'teljesitesDatum'];
 
         if (isset($this->attributes)) $this->attributes = \sortArrayKeysToOrder($this->attributes, $invoiceKeysOrder);
 
