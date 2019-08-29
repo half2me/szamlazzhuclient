@@ -33,7 +33,6 @@ class StornoInvoice extends MutatorAccessible
         'merchantEmailText' => 'elado.emailSzoveg',
 
         'invoiceNumber' => 'fejlec.szamlaszam',
-        'orderNumber' =>'fejlec.rendelesSzam',
     ];
 
     public function setCustomerAttribute($customer){
@@ -134,7 +133,6 @@ class StornoInvoice extends MutatorAccessible
             'fejlec.keltDatum' => ['required', 'date:Y-m-d'],
             'fejlec.teljesitesDatum' => ['required', 'date:Y-m-d'],
             'fejlec.szamlaszam' => 'string',
-            'fejlec.rendelesSzam' => 'string',
         ];
     }
     /**
@@ -172,7 +170,7 @@ class StornoInvoice extends MutatorAccessible
         $invoiceKeysOrder = ['beallitasok', 'fejlec', 'elado', 'vevo'];
         $merchantKeysOrder = ['emailReplyto', 'emailTargy', 'emailSzoveg'];
         $settingsKeysOrder = ['felhasznalo', 'jelszo', 'eszamla', 'szamlaLetoltes'];
-        $headerKeysOrder = ['szamlaszam', 'rendelesSzam', 'keltDatum', 'teljesitesDatum'];
+        $headerKeysOrder = ['szamlaszam', 'keltDatum', 'teljesitesDatum'];
 
         if (isset($this->attributes)) $this->attributes = \sortArrayKeysToOrder($this->attributes, $invoiceKeysOrder);
 
